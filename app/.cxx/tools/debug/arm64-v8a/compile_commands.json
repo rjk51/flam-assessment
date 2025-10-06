@@ -1,0 +1,7 @@
+[
+{
+  "directory": "C:/Projects/EdgeDetectionViewer/app/.cxx/Debug/6tr6g525/arm64-v8a",
+  "command": "C:\\Users\\ayaan\\AppData\\Local\\Android\\Sdk\\ndk\\27.0.12077973\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=aarch64-none-linux-android24 --sysroot=C:/Users/ayaan/AppData/Local/Android/Sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Dnative_lib_EXPORTS -isystem C:/opencv/OpenCV-android-sdk/sdk/native/jni/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -o CMakeFiles\\native-lib.dir\\native-lib.cpp.o -c C:\\Projects\\EdgeDetectionViewer\\app\\src\\main\\cpp\\native-lib.cpp",
+  "file": "C:\\Projects\\EdgeDetectionViewer\\app\\src\\main\\cpp\\native-lib.cpp"
+}
+]

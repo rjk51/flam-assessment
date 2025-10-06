@@ -1,0 +1,3 @@
+C:/Projects/EdgeDetectionViewer/openCVLibrary/.cxx/Debug/1z231q3p/arm64-v8a/CMakeFiles/opencv_jni_shared.dir
+C:/Projects/EdgeDetectionViewer/openCVLibrary/.cxx/Debug/1z231q3p/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Projects/EdgeDetectionViewer/openCVLibrary/.cxx/Debug/1z231q3p/arm64-v8a/CMakeFiles/rebuild_cache.dir
