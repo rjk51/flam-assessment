@@ -29,7 +29,7 @@ Java_com_example_edgedetectionviewer_MainActivity_processFrame(JNIEnv *env, jobj
     // Gaussian blur (in-place is fine and avoids extra allocation)
     cv::GaussianBlur(gray, gray, cv::Size(5,5), 1.5, 1.5);
 
-    // Canny edges
+    // Added Canny edge detection
     cv::Canny(gray, edges, 100, 200);
 
     // Convert edges (gray) back to RGBA and store in mat for display (in-place)
