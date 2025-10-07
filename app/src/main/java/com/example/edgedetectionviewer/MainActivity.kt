@@ -24,7 +24,6 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     private lateinit var glView: GLSurfaceView
     private lateinit var glRenderer: GLRenderer
 
-    // UI elements
     private lateinit var toggleButton: Button
     private lateinit var fpsText: TextView
 
