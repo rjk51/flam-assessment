@@ -118,6 +118,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
             processFrame(mat.nativeObjAddr)
 
             // Ensure we provide an RGBA Mat to the GL renderer for consistent texture format
+            // If input has 4 channels, we can use it directly; otherwise convert
             try {
                 if (mat.channels() == 4) {
                     glRenderer.setFrame(mat)

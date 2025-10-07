@@ -243,6 +243,7 @@ class GLRenderer : GLSurfaceView.Renderer {
         }
     }
 
+    //Vertex and fragment shaders
     companion object {
         private const val VERTEX_SHADER = """
             attribute vec4 aPosition;
