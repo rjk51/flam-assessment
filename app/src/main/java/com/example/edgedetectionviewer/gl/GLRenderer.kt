@@ -31,8 +31,12 @@ class GLRenderer : GLSurfaceView.Renderer {
     private var texHeight: Int = 0
     private var texFormat: Int = GLES20.GL_RGBA // default; will adapt to source
 
-    // Vertex data (two triangles forming a full-screen quad)
-    private val vertexData: FloatBuffer = floatArrayOf(
+    // Surface size
+    private var surfaceWidth: Int = 1
+    private var surfaceHeight: Int = 1
+
+    // Vertex data (dynamic to preserve aspect ratio)
+    private var vertexData: FloatBuffer = floatArrayOf(
         // X, Y (clip space)
         -1f, -1f,
          1f, -1f,
@@ -53,6 +57,9 @@ class GLRenderer : GLSurfaceView.Renderer {
     private var pixelBuffer: ByteBuffer? = null
     private val frameAvailable = AtomicBoolean(false)
     private val lock = Any()
+
+    // Vertex dirty flag: set when surface or texture size changes and requires recompute
+    private var vertexDirty = true
 
     // FPS control (~15 FPS => 66.6 ms per frame)
     private val targetFrameMillis = 66L
@@ -94,6 +101,10 @@ class GLRenderer : GLSurfaceView.Renderer {
 
     override fun onSurfaceChanged(unused: javax.microedition.khronos.opengles.GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
+        surfaceWidth = max(1, width)
+        surfaceHeight = max(1, height)
+        // Mark vertex recompute
+        vertexDirty = true
     }
 
     override fun onDrawFrame(unused: javax.microedition.khronos.opengles.GL10?) {
@@ -127,9 +138,17 @@ class GLRenderer : GLSurfaceView.Renderer {
                         buffer
                     )
                 }
+                // Texture size may have changed -> recompute vertices to preserve aspect
+                vertexDirty = true
             }
         } else {
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
+        }
+
+        // Recompute vertex coordinates if needed to preserve aspect ratio
+        if (vertexDirty) {
+            updateVertexBufferForAspect()
+            vertexDirty = false
         }
 
         // Set up vertex attributes
@@ -191,7 +210,43 @@ class GLRenderer : GLSurfaceView.Renderer {
             texHeight = height
             texFormat = format
             frameAvailable.set(true)
+            // Mark vertex recompute on GL thread
+            vertexDirty = true
         }
+    }
+
+    private fun updateVertexBufferForAspect() {
+        // Compute aspect ratios
+        val tw = max(1, texWidth).toFloat()
+        val th = max(1, texHeight).toFloat()
+        val sw = max(1, surfaceWidth).toFloat()
+        val sh = max(1, surfaceHeight).toFloat()
+
+        val textureAspect = tw / th
+        val surfaceAspect = sw / sh
+
+        var scaleX = 1f
+        var scaleY = 1f
+        if (textureAspect > surfaceAspect) {
+            // texture is relatively wider -> full width, reduced height
+            scaleY = surfaceAspect / textureAspect
+        } else {
+            // texture is relatively taller or equal -> full height, reduced width
+            scaleX = textureAspect / surfaceAspect
+        }
+
+        val left = -scaleX
+        val right = scaleX
+        val bottom = -scaleY
+        val top = scaleY
+
+        val verts = floatArrayOf(
+            left, bottom,
+            right, bottom,
+            left, top,
+            right, top
+        )
+        vertexData = verts.toFloatBuffer()
     }
 
     fun release() {

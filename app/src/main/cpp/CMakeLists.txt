@@ -3,7 +3,7 @@ project("edgedetectionviewer")
 
 add_library(native-lib SHARED native-lib.cpp)
 
-set(OpenCV_DIR "C:/opencv/OpenCV-android-sdk/sdk/native/jni/abi-x86")
+set(OpenCV_DIR "C:/opencv/OpenCV-android-sdk/sdk/native/jni/abi-arm64-v8a")
 
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})

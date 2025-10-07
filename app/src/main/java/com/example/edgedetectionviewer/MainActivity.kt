@@ -8,6 +8,7 @@ import android.view.View
 import android.opengl.GLSurfaceView
 import android.widget.Button
 import android.widget.TextView
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import org.opencv.android.CameraBridgeViewBase
@@ -24,19 +25,31 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
     private lateinit var glView: GLSurfaceView
     private lateinit var glRenderer: GLRenderer
 
+    // UI elements
     private lateinit var toggleButton: Button
     private lateinit var fpsText: TextView
 
     // State: true => show edge detection (GL); false => show raw camera
-    private var showEdges = true
+    private var showEdges = false
 
     // FPS calculation
     private var lastFrameTimeNs: Long = 0L
+
+    // Track OpenCV loaded state
+    private var openCvLoaded = false
+
+    // Frame heartbeat
+    private var frameCountSinceResume = 0
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var cameraFallbackAttempt = 0
+    private val maxFallbackAttempts = 3
 
     companion object {
         init {
             System.loadLibrary("native-lib")
         }
+        private const val CAMERA_PERMISSION_REQUEST = 1
+        private const val TAG = "MainActivity"
     }
 
     external fun processFrame(matAddr: Long)
@@ -46,6 +59,7 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         setContentView(R.layout.activity_main)
 
         cameraView = findViewById(R.id.camera_view)
+        // Keep camera view present so the surface is created; GL view will overlay output
         cameraView.visibility = SurfaceView.VISIBLE
         cameraView.setCvCameraViewListener(this)
 
@@ -64,12 +78,12 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         toggleButton.setOnClickListener {
             showEdges = !showEdges
             if (showEdges) {
-                // show GL output, hide raw camera preview
+                // show GL output, keep camera running in background
                 glView.visibility = View.VISIBLE
-                cameraView.visibility = View.GONE
+                cameraView.visibility = View.VISIBLE
                 toggleButton.text = getString(R.string.show_raw)
             } else {
-                // show raw camera preview, hide GL overlay
+                // show raw camera preview
                 glView.visibility = View.GONE
                 cameraView.visibility = View.VISIBLE
                 toggleButton.text = getString(R.string.show_edges)
@@ -79,33 +93,136 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         // Set initial mode
         if (showEdges) {
             glView.visibility = View.VISIBLE
-            cameraView.visibility = View.GONE
+            cameraView.visibility = View.VISIBLE
             toggleButton.text = getString(R.string.show_raw)
         } else {
+            // Default to raw camera to make debugging easier
             glView.visibility = View.GONE
             cameraView.visibility = View.VISIBLE
             toggleButton.text = getString(R.string.show_edges)
         }
 
+        // If permission not granted, request it; otherwise enable camera when OpenCV loads
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), 1)
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_REQUEST)
+        } else {
+            // Mark granted state for OpenCV bridge early
+            setOpenCvCameraPermissionGrantedIfAllowed()
         }
     }
 
     override fun onResume() {
         super.onResume()
-        OpenCVLoader.initDebug()
-        cameraView.enableView()
+        Log.d(TAG, "onResume: initializing OpenCV")
+        // Initialize OpenCV (static init) and enable camera if permission granted
+        openCvLoaded = OpenCVLoader.initDebug()
+        if (!openCvLoaded) {
+            Log.w(TAG, "OpenCV initDebug() failed in onResume")
+            runOnUiThread { fpsText.text = "OpenCV init failed" }
+        } else {
+            runOnUiThread { fpsText.text = "OpenCV: OK" }
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED) {
+                try {
+                    // Ensure the OpenCV camera bridge sees permission granted
+                    setOpenCvCameraPermissionGrantedIfAllowed()
+                    cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_ANY)
+                    cameraView.enableView()
+                    Log.d(TAG, "Camera enabled in onResume")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to enable camera in onResume: ${e.message}")
+                }
+            }
+        }
         glView.onResume()
         lastFrameTimeNs = System.nanoTime()
+        // Reset frame counter and start watchdog to ensure frames arrive
+        frameCountSinceResume = 0
+        cameraFallbackAttempt = 0
+        handler.removeCallbacks(checkFramesRunnable)
+        handler.postDelayed(checkFramesRunnable, 2000)
     }
 
     override fun onPause() {
         super.onPause()
-        cameraView.disableView()
+        if (openCvLoaded) {
+            try {
+                cameraView.disableView()
+                Log.d(TAG, "Camera disabled in onPause")
+            } catch (e: Exception) {
+                Log.w(TAG, "Error disabling camera: ${e.message}")
+            }
+        }
         glView.onPause()
+        handler.removeCallbacks(checkFramesRunnable)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == CAMERA_PERMISSION_REQUEST) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Camera permission granted by user")
+                runOnUiThread { fpsText.text = "Permission: Granted" }
+                // Let OpenCV bridge know about permission
+                setOpenCvCameraPermissionGrantedIfAllowed()
+                if (openCvLoaded) {
+                    try {
+                        cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_ANY)
+                        cameraView.enableView()
+                        Log.d(TAG, "Camera enabled after permission grant")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to enable camera after permission grant: ${e.message}")
+                    }
+                }
+            } else {
+                Log.d(TAG, "Camera permission denied by user")
+                runOnUiThread { fpsText.text = "Permission: Denied" }
+            }
+        }
+    }
+
+    private val checkFramesRunnable = Runnable {
+        if (frameCountSinceResume == 0) {
+            // No frames received within the window; try fallback
+            cameraFallbackAttempt++
+            if (cameraFallbackAttempt <= maxFallbackAttempts) {
+                runOnUiThread { fpsText.text = "No frames - retrying camera ($cameraFallbackAttempt)" }
+                trySwitchCameraIndex()
+            } else {
+                runOnUiThread { fpsText.text = "No frames - all retries failed" }
+            }
+        } else {
+            runOnUiThread { fpsText.text = "Frames OK: $frameCountSinceResume" }
+        }
+    }
+
+    private fun trySwitchCameraIndex() {
+        try {
+            cameraView.disableView()
+        } catch (_: Exception) {}
+        try {
+            when (cameraFallbackAttempt % 3) {
+                1 -> cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_BACK)
+                2 -> cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_FRONT)
+                else -> cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_ANY)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to set camera index during fallback: ${e.message}")
+        }
+        try {
+            // Ensure bridge sees permission before re-enabling
+            setOpenCvCameraPermissionGrantedIfAllowed()
+            cameraView.enableView()
+            Log.d(TAG, "Attempted fallback enableView #$cameraFallbackAttempt")
+            runOnUiThread { fpsText.text = "Retrying camera (#$cameraFallbackAttempt)" }
+        } catch (e: Exception) {
+            Log.w(TAG, "enableView failed during fallback: ${e.message}")
+            runOnUiThread { fpsText.text = "enableView failed: ${e.message}" }
+        }
+        // Schedule another check
+        handler.postDelayed(checkFramesRunnable, 2000)
     }
 
     override fun onCameraFrame(inputFrame: CameraBridgeViewBase.CvCameraViewFrame?): Mat {
@@ -113,12 +230,17 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
 
         val mat = inputFrame!!.rgba()
 
+        // Heartbeat
+        frameCountSinceResume++
+
+        // Log a short heartbeat when frames are received
+        Log.v(TAG, "onCameraFrame: received frame ${mat.cols()}x${mat.rows()} channels=${mat.channels()}")
+
         if (showEdges) {
             // Let native processing modify the mat in-place
             processFrame(mat.nativeObjAddr)
 
             // Ensure we provide an RGBA Mat to the GL renderer for consistent texture format
-            // If input has 4 channels, we can use it directly; otherwise convert
             try {
                 if (mat.channels() == 4) {
                     glRenderer.setFrame(mat)
@@ -136,11 +258,10 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
                 glView.requestRender()
             } catch (e: Exception) {
                 // If renderer isn't ready yet or setFrame fails, ignore to avoid crashing the camera thread
-                e.printStackTrace()
+                Log.w(TAG, "Error in GL update: ${e.message}")
             }
         } else {
-            // Raw mode: do not run native processing; ensure GL view hidden in UI thread
-            // (visibility is managed by button but keep safe)
+            // Raw mode: do not run native processing
         }
 
         // Calculate timing and FPS
@@ -157,8 +278,14 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
         return mat
     }
 
-    override fun onCameraViewStarted(width: Int, height: Int) {}
-    override fun onCameraViewStopped() {}
+    override fun onCameraViewStarted(width: Int, height: Int) {
+        Log.d(TAG, "onCameraViewStarted: ${width}x${height}")
+        runOnUiThread { fpsText.text = "Camera started: ${width}x${height}" }
+    }
+    override fun onCameraViewStopped() {
+        Log.d(TAG, "onCameraViewStopped")
+        runOnUiThread { fpsText.text = "Camera stopped" }
+    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -168,5 +295,18 @@ class MainActivity : AppCompatActivity(), CameraBridgeViewBase.CvCameraViewListe
                 try { glRenderer.release() } catch (_: Exception) {}
             }
         } catch (_: Exception) {}
+    }
+
+    // Inform the OpenCV camera view that runtime camera permission is granted (if it is)
+    private fun setOpenCvCameraPermissionGrantedIfAllowed() {
+        try {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                cameraView.setCameraPermissionGranted()
+                Log.d(TAG, "setCameraPermissionGranted() called")
+            }
+        } catch (e: Throwable) {
+            // Be defensive in case OpenCV version differs
+            Log.w(TAG, "setCameraPermissionGranted failed: ${e.message}")
+        }
     }
 }
