@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">EdgeDetectionViewer</string>
+    <string name="toggle_mode">Toggle Mode</string>
+    <string name="show_raw">Show Raw</string>
+    <string name="show_edges">Show Edges</string>
 </resources>
