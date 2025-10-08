@@ -1,1 +1,0 @@
-C:\Projects\EdgeDetectionViewer\openCVLibrary\libcxx_helper\CMakeLists.txt
