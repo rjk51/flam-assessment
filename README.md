@@ -86,13 +86,13 @@ Download and configure OpenCV for Android:
 
 # Update the CMakeLists.txt path (already configured in the project)
 # File: app/src/main/cpp/CMakeLists.txt
-# Line 6: set(OpenCV_DIR "C:/opencv/OpenCV-android-sdk/sdk/native/jni/abi-arm64-v8a")
+# Line 6: set(OpenCV_DIR "C:/opencv/OpenCV-android-sdk/sdk/native/jni")
 ```
 
 **Important**: Update `app/src/main/cpp/CMakeLists.txt` with your OpenCV SDK path:
 
 ```cmake
-set(OpenCV_DIR "C:/opencv/OpenCV-android-sdk/sdk/native/jni/abi-arm64-v8a")
+set(OpenCV_DIR "C:/opencv/OpenCV-android-sdk/sdk/native/jni")
 ```
 
 #### 2. Configure NDK in Android Studio
