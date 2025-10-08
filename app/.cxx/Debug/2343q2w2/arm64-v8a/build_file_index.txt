@@ -1,1 +1,0 @@
-C:\Projects\EdgeDetectionViewer\app\src\main\cpp\CMakeLists.txt

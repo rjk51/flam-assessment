@@ -1,1 +1,0 @@
-C:\Projects\EdgeDetectionViewer\app\build\intermediates\cxx\Debug\2343q2w2\obj\arm64-v8a
