@@ -1,0 +1,11 @@
+{
+  "name": "edge-viewer-ws-mock",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
+}

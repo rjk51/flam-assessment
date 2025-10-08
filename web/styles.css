@@ -1,0 +1,25 @@
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; align-items: center; background: #0f1720; font-family: 'Segoe UI', Roboto, Arial, sans-serif; color: #e6eef8; }
+
+.site-header { width: 100%; padding: 20px 24px; background: linear-gradient(90deg,#081224,#0b1530); box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+.site-title { font-size: 20px; font-weight: 600; }
+.site-sub { font-size: 12px; color: #9fb0d6; margin-top: 4px }
+
+.container { width: 980px; max-width: calc(100% - 48px); margin: 28px auto; }
+.card { background: linear-gradient(180deg,#0b1220,#07101a); border-radius: 10px; padding: 8px; box-shadow: 0 8px 30px rgba(2,8,23,0.7); }
+.viewer { position: relative; overflow: hidden; display: block; border-radius: 6px; }
+.viewer img { display: block; width: 100%; height: auto; max-height: 650px; object-fit: contain; }
+
+.overlay { position: absolute; left: 14px; top: 14px; display: flex; gap: 12px; align-items: center; z-index: 20; }
+.stats { background: rgba(3,9,20,0.7); padding: 8px 12px; border-radius: 8px; font-size: 14px; color: #dbeafe; box-shadow: 0 4px 18px rgba(2,8,23,0.6); }
+.controls { display:flex; gap:8px; align-items:center }
+button { background: #0a84ff; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 6px 18px rgba(10,132,255,0.18); }
+.auto-mode { display:flex; gap:6px; align-items:center; color:#cfe4ff; font-size:13px }
+.auto-mode input { width:14px; height:14px }
+
+.help { margin: 12px 0 28px 0; color: #9fb0d6; font-size: 13px }
+
+code { background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px; color: #cfe4ff }
+
+/* WebSocket status badge (hidden by default, shown when disconnected) */
+#ws-status { display: none; }

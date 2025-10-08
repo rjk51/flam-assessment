@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Edge Detection Viewer - Minimal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-title">Edge Detection Viewer</div>
+    <div class="site-sub">Minimal demo — toggle between raw and edges</div>
+  </header>
+
+  <main class="container">
+    <div class="viewer card">
+      <img id="frame" alt="frame" src="assets/raw_image.jpg">
+      <div class="overlay">
+        <div class="stats">FPS: <span id="fps">0</span> | Res: <span id="res">1920x1080</span></div>
+        <div class="controls">
+          <button id="toggleBtn">Mode: Raw</button>
+          <label class="auto-mode"><input type="checkbox" id="autoMode"> Auto mode</label>
+        </div>
+      </div>
+    </div>
+    <p class="help">Use the button to switch display modes. Replace images in <code>assets/</code> with your exported frames.</p>
+  </main>
+
+  <script type="module" src="dist/main.js"></script>
+</body>
+</html>
